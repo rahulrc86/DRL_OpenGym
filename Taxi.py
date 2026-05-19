@@ -47,32 +47,32 @@ episode_over = False
 total_reward = 0
 episode_reward_random = []
 
-while not episode_over:
-    #Choose an action: 0 - push cart left, 1 - push cart right
-    #Action Selection Stage
-    action = env_random.action_space.sample() # Random action. This is not an MDP model 
-    # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
-    observation, reward, terminated, truncated, info = env_random.step(action)
+# while not episode_over:
+#     #Choose an action: 0 - push cart left, 1 - push cart right
+#     #Action Selection Stage
+#     action = env_random.action_space.sample() # Random action. This is not an MDP model 
+#     # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
+#     observation, reward, terminated, truncated, info = env_random.step(action)
     
-    # Decode observation to extract state details
-    taxi_row, taxi_col, passenger_location, destination_location = env_random.unwrapped.decode(observation)
-    print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
-    print(f"Taxi Position: ({taxi_row}, {taxi_col})")
-    print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
-    if truncated:
-        print("Episode truncated due to time limit.")
-    if terminated:
-        print("Episode terminated successfully.")
-    #reward +1 for each step the pole stays upright
-    #Terminated / At Terminal Step : True if pole falls too far
-    #Truncated : True if the time limit is hit
-    total_reward += reward
-    episode_over = terminated or truncated
-    #Introduce a small delay to make the rendering visible (optional)
-    time.sleep(0.1)
-    episode_reward_random.append(reward)
-print(f"Episode finished! Total reward: {total_reward}")
-print(f"Rewards per step: {episode_reward_random}")
+#     # Decode observation to extract state details
+#     taxi_row, taxi_col, passenger_location, destination_location = env_random.unwrapped.decode(observation)
+#     print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
+#     print(f"Taxi Position: ({taxi_row}, {taxi_col})")
+#     print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
+#     if truncated:
+#         print("Episode truncated due to time limit.")
+#     if terminated:
+#         print("Episode terminated successfully.")
+#     #reward +1 for each step the pole stays upright
+#     #Terminated / At Terminal Step : True if pole falls too far
+#     #Truncated : True if the time limit is hit
+#     total_reward += reward
+#     episode_over = terminated or truncated
+#     #Introduce a small delay to make the rendering visible (optional)
+#     time.sleep(0.1)
+#     episode_reward_random.append(reward)
+# print(f"Episode finished! Total reward: {total_reward}")
+# print(f"Rewards per step: {episode_reward_random}")
 env_random.close()
 
 
@@ -201,15 +201,18 @@ a_sel = ACTION_SELECTION(0, 1, 2, 3, 4, 5)
 # # # Usage:
 # # plot_rewards(episode_reward_random, episode_reward_heuristic)
 
-# #NOT REQUIRED
+# #INTIALIZE Q-TABLE TO ZERO FOR ALL STATE-ACTION PAIRS
 def initialize_q_table(p_loc,d_loc,a_sel):
     q_table={
-        (p,d,a):0
+        (taxi_row,taxi_col,p,d,a):10
+        for taxi_row in range(5)
+        for taxi_col in range(5)
         for p in p_loc
         for d in d_loc
         for a in a_sel
     }
     return q_table
+
 class QLearningAgent:
     def __init__(self,env:gym.Env,learning_rate:float,initial_epsilon:float,\
                  epsilon_decay:float,final_epsilon:float,discount_factor:float=0.9):
@@ -241,25 +244,202 @@ class QLearningAgent:
 
         #Initialize Q-table as a dictionary of state-action pairs
         self.q_table = initialize_q_table(p_loc, d_loc, a_sel)
+    
+    #get q value
+    def get_q_value(self,t_row,t_col,p_loc, d_loc, a_sel):
+        return self.q_table[(t_row, t_col, p_loc, d_loc, a_sel)]
 
-    #heuristic action selection method
-    def heuristic_action(self,obs:tuple[np.float32,np.float32,np.float32,np.float32]) -> int:
-        pass
-    # Action Selection Stage
-
-    def get_action(self,info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8]) -> int:
+    def get_valid_actions(self,info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8]) -> list:
         '''
-        Select an action where a smarter heuristic policy is used during exploration instead of pure random actions.
+        Get the list of valid actions based on the current state information.
         Args:
             info: The current information (state)
         Returns:
-            action: The action to take (0-5)
-#         '''
+            A list of valid actions (0-5) that can be taken in the current state
+        '''
+        return [a for a in range(6) if info["action_mask"][a]]
+    
+    def get_best_action(self, taxi_row, taxi_col, passenger_location, destination_location, info):
+        valid_actions = self.get_valid_actions(info)
+        if not valid_actions:
+            return self.env.action_space.sample()  # No valid actions, return a random action
+        best_action = valid_actions[0]
+        best_q = self.get_q_value(taxi_row, taxi_col, passenger_location, destination_location, best_action)
+
+        for action in valid_actions[1:]:
+            q = self.get_q_value(taxi_row, taxi_col, passenger_location, destination_location, action)
+            if q > best_q:
+                best_q = q
+                best_action = action
+        return best_action
+    
+    # #heuristic action selection method
+    # def heuristic_action(self,info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8],passenger_location:int,destination_location:int,taxi_row:int,taxi_col:int) -> int:
+    #     # Extract the q_value for the valid values from info. ie call get_q_value for all locations where info["action_mask"]==1
+    #     valid_q_values = [self.get_q_value(taxi_row, taxi_col, passenger_location, destination_location, a) for a in range(6) if info["action_mask"][a]]
+    #     # Select the action with the highest Q-value among the valid actions
+    #     if valid_q_values:
+    #         max_q_value = max(valid_q_values)
+    #         best_actions = [a for a in range(6) if info["action_mask"][a] and self.get_q_value(passenger_location, destination_location, a) == max_q_value]
+    #         return np.random.choice(best_actions)  # Randomly select among the best actions
+    #     pass
+    # Action Selection Stage
+    def get_action(self, taxi_row, taxi_col, passenger_location, destination_location, info):
+        valid_actions = self.get_valid_actions(info)
 
         if np.random.rand() < self.epsilon:
-             # Explore: use the heuristic policy instead of pure random selection.
-             return self.heuristic_action(info)
-        else:
-            # Exploit: choose a random action (since Q-values are not trained yet, this is effectively random).
-             return self.env.action_space.sample()  # Placeholder for actual Q-value based action selection
-            
+            # Explore
+            return np.random.choice(valid_actions)
+        # Exploit
+        return self.get_best_action(taxi_row, taxi_col, passenger_location, destination_location, info)
+
+    def get_passenger_location_coordinates(self, passenger_location:int, taxi_row:int, taxi_col:int) -> tuple:
+        '''
+        Get the coordinates of the passenger location based on its discrete value.
+        Args:
+            passenger_location: The discrete value representing the passenger location
+            taxi_row: The row position of the taxi
+            taxi_col: The column position of the taxi
+        Returns:
+            A tuple of (row, column) coordinates for the passenger location
+        '''
+        if passenger_location == p_loc.RED:
+            return 0, 0
+        elif passenger_location == p_loc.GREEN:
+            return 0, 4
+        elif passenger_location == p_loc.YELLOW:
+            return 4, 0
+        elif passenger_location == p_loc.BLUE:
+            return 4, 4
+        else: #return taxi coordinates if passenger is in the taxi
+            return taxi_row, taxi_col
+        
+    def get_destination_location_coordinates(self, destination_location:int) -> tuple:
+        '''
+        Get the coordinates of the destination location based on its discrete value.
+        Args:
+            destination_location: The discrete value representing the destination location
+        Returns:
+            A tuple of (row, column) coordinates for the destination location
+        '''
+        if destination_location == d_loc.RED:
+            return 0, 0
+        elif destination_location == d_loc.GREEN:
+            return 0, 4
+        elif destination_location == d_loc.YELLOW:
+            return 4, 0
+        elif destination_location == d_loc.BLUE:
+            return 4, 4
+        
+
+    def get_next_state(self,taxi_row:int, taxi_col:int, passenger_location:int, destination_location:int, action:int) -> tuple:
+        '''
+        Get the next state resulting from taking an action in the current state.
+        Args:
+            taxi_row: The row position of the taxi
+            taxi_col: The column position of the taxi
+            passenger_location: The location of the passenger
+            destination_location: The location of the destination
+            action: The action taken
+        '''
+        if action == a_sel.MOVE_SOUTH:
+            taxi_position_next = min(taxi_row + 1, 4), taxi_col
+            passenger_location_next = passenger_location
+        elif action == a_sel.MOVE_NORTH:
+            taxi_position_next = max(taxi_row - 1, 0), taxi_col
+            passenger_location_next = passenger_location
+        elif action == a_sel.MOVE_EAST:
+            taxi_position_next = taxi_row, min(taxi_col + 1, 4)
+            passenger_location_next = passenger_location
+        elif action == a_sel.MOVE_WEST:
+            taxi_position_next = taxi_row, max(taxi_col - 1, 0)
+            passenger_location_next = passenger_location
+        elif action == a_sel.PICKUP:
+            if passenger_location != p_loc.IN_TAXI and (taxi_row, taxi_col) == self.get_passenger_location_coordinates(passenger_location, taxi_row, taxi_col):
+                passenger_location_next = p_loc.IN_TAXI
+            else:
+                passenger_location_next = passenger_location
+            taxi_position_next = taxi_row, taxi_col
+        elif action == a_sel.DROPOFF:
+            if passenger_location == p_loc.IN_TAXI and (taxi_row, taxi_col) == self.get_destination_location_coordinates(destination_location):
+                passenger_location_next = destination_location  # Passenger is dropped off at the destination
+            else:
+                passenger_location_next = passenger_location
+            taxi_position_next = taxi_row, taxi_col 
+        return taxi_position_next[0], taxi_position_next[1], passenger_location_next, destination_location, action       
+
+    def update_q_table(self, taxi_row:int, taxi_col:int, passenger_location:int, destination_location:int, action:int, reward:int, done:bool, info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8]):
+        '''
+        Update the Q-table based on the observed transition.
+        Args:
+            taxi_row: The row position of the taxi
+            taxi_col: The column position of the taxi
+            passenger_location: The location of the passenger
+            destination_location: The location of the destination
+            action: The action taken
+            reward: The reward received
+            next_state: The resulting state after taking the action
+            done: Whether the episode is done
+        '''
+        # Update Q-value using the Q-learning update rule: Q(s,a) = Q(s,a) + alpha * (reward + gamma * max(Q(s', a')) - Q(s,a))
+        old_q_value = self.get_q_value(taxi_row, taxi_col, passenger_location, destination_location, action)
+        
+        if done:
+            target = reward  # No future rewards if the episode is done
+        else:             
+            # Get all valid actions for the next state and their Q-values
+            next_q_values = []
+            for next_action in self.get_valid_actions(info):
+                taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next, _ = self.get_next_state(taxi_row, taxi_col, passenger_location, destination_location, next_action)
+                next_q = self.get_q_value(taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next, next_action)
+                next_q_values.append(next_q)
+            target = reward + self.gamma * max(next_q_values)
+        # Update the Q-table with the new Q-value
+        new_q_value = old_q_value + self.lr * (target - old_q_value)
+        self.q_table[(taxi_row, taxi_col, passenger_location, destination_location, action)] = new_q_value
+
+
+    
+
+
+#Training Hyperparameters
+learning_rate = 0.3
+starting_epsilon = 1.0
+
+env_rl_agent = gym.make("Taxi-v3", render_mode="human")
+agent = QLearningAgent(env_rl_agent, learning_rate, starting_epsilon, epsilon_decay=0.99, final_epsilon=0.1)
+
+episode_over = False
+total_reward = 0
+episode_reward_random = []
+observation,info = env_rl_agent.reset()
+for episodes in range(5):
+    observation,info = env_rl_agent.reset()
+    while not episode_over:
+        #Choose an action: 0 - move south, 1 - move north, 2 - move east, 3 - move west, 4 - pickup, 5 - dropoff
+        #Action Selection Stage
+        taxi_row, taxi_col, passenger_location, destination_location = env_rl_agent.unwrapped.decode(observation)
+        action = agent.get_action(taxi_row, taxi_col, passenger_location, destination_location, info)  # Use the Q-learning agent to select an action
+        # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
+        observation, reward, terminated, truncated, info = env_rl_agent.step(action)
+        print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
+        print(f"Taxi Position: ({taxi_row}, {taxi_col})")
+        print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
+        if truncated:
+            print("Episode truncated due to time limit.")
+        if terminated:
+            print("Episode terminated successfully.")
+        episode_over = terminated or truncated
+        agent.update_q_table(taxi_row, taxi_col, passenger_location, destination_location, action, reward, episode_over, info)  # Update Q-table based on the transition
+        #reward +1 for each step the pole stays upright
+        #Terminated / At Terminal Step : True if pole falls too far
+        #Truncated : True if the time limit is hit
+        total_reward += reward
+        
+        #Introduce a small delay to make the rendering visible (optional)
+        time.sleep(0.1)
+        episode_reward_random.append(reward)
+    episode_over = False
+print(f"Episode finished! Total reward: {total_reward}")
+print(f"Rewards per step: {episode_reward_random}")
+env_rl_agent.close()
