@@ -204,7 +204,7 @@ a_sel = ACTION_SELECTION(0, 1, 2, 3, 4, 5)
 # #INTIALIZE Q-TABLE TO ZERO FOR ALL STATE-ACTION PAIRS
 def initialize_q_table(p_loc,d_loc,a_sel):
     q_table={
-        (taxi_row,taxi_col,p,d,a):10
+        (taxi_row,taxi_col,p,d,a):0
         for taxi_row in range(5)
         for taxi_col in range(5)
         for p in p_loc
@@ -285,7 +285,17 @@ class QLearningAgent:
     #     pass
     # Action Selection Stage
     def get_action(self, taxi_row, taxi_col, passenger_location, destination_location, info):
+        # Forced pickup heuristic
         valid_actions = self.get_valid_actions(info)
+        if passenger_location != p_loc.IN_TAXI:
+            passenger_row, passenger_col = self.get_passenger_location_coordinates(passenger_location,taxi_row,taxi_col)
+            if (taxi_row, taxi_col) == (passenger_row, passenger_col):
+                return a_sel.PICKUP  # Force pickup if the taxi is at the passenger's location and the passenger is not in the taxi
+            
+        if passenger_location == p_loc.IN_TAXI:  
+            if (taxi_row, taxi_col) == self.get_destination_location_coordinates(destination_location):
+                return a_sel.DROPOFF  # Force dropoff if the taxi is at the destination and the passenger is in the taxi
+        
 
         if np.random.rand() < self.epsilon:
             # Explore
@@ -368,7 +378,7 @@ class QLearningAgent:
             taxi_position_next = taxi_row, taxi_col 
         return taxi_position_next[0], taxi_position_next[1], passenger_location_next, destination_location, action       
 
-    def update_q_table(self, taxi_row:int, taxi_col:int, passenger_location:int, destination_location:int, action:int, reward:int, done:bool, info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8]):
+    def update_q_table(self, observation:tuple, taxi_row:int, taxi_col:int, passenger_location:int, destination_location:int, action:int, reward:int, done:bool, info:tuple[np.int8,np.int8,np.int8,np.int8,np.int8]):
         '''
         Update the Q-table based on the observed transition.
         Args:
@@ -390,7 +400,8 @@ class QLearningAgent:
             # Get all valid actions for the next state and their Q-values
             next_q_values = []
             for next_action in self.get_valid_actions(info):
-                taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next, _ = self.get_next_state(taxi_row, taxi_col, passenger_location, destination_location, next_action)
+                #taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next, _ = self.get_next_state(taxi_row, taxi_col, passenger_location, destination_location, next_action)
+                taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next = self.env.unwrapped.decode(observation)
                 next_q = self.get_q_value(taxi_row_next, taxi_col_next, passenger_location_next, destination_location_next, next_action)
                 next_q_values.append(next_q)
             target = reward + self.gamma * max(next_q_values)
@@ -403,8 +414,8 @@ class QLearningAgent:
 
 
 #Training Hyperparameters
-learning_rate = 0.3
-starting_epsilon = 1.0
+learning_rate = 0.1
+starting_epsilon = 0.2
 
 env_rl_agent = gym.make("Taxi-v3", render_mode="human")
 agent = QLearningAgent(env_rl_agent, learning_rate, starting_epsilon, epsilon_decay=0.99, final_epsilon=0.1)
@@ -413,7 +424,7 @@ episode_over = False
 total_reward = 0
 episode_reward_random = []
 observation,info = env_rl_agent.reset()
-for episodes in range(5):
+for episodes in range(1):
     observation,info = env_rl_agent.reset()
     while not episode_over:
         #Choose an action: 0 - move south, 1 - move north, 2 - move east, 3 - move west, 4 - pickup, 5 - dropoff
@@ -430,7 +441,7 @@ for episodes in range(5):
         if terminated:
             print("Episode terminated successfully.")
         episode_over = terminated or truncated
-        agent.update_q_table(taxi_row, taxi_col, passenger_location, destination_location, action, reward, episode_over, info)  # Update Q-table based on the transition
+        agent.update_q_table(observation,taxi_row, taxi_col, passenger_location, destination_location, action, reward, episode_over, info)  # Update Q-table based on the transition
         #reward +1 for each step the pole stays upright
         #Terminated / At Terminal Step : True if pole falls too far
         #Truncated : True if the time limit is hit
