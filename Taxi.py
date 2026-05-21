@@ -320,7 +320,7 @@ class QLearningAgent:
         elif passenger_location == p_loc.YELLOW:
             return 4, 0
         elif passenger_location == p_loc.BLUE:
-            return 4, 4
+            return 4, 3
         else: #return taxi coordinates if passenger is in the taxi
             return taxi_row, taxi_col
         
@@ -339,7 +339,7 @@ class QLearningAgent:
         elif destination_location == d_loc.YELLOW:
             return 4, 0
         elif destination_location == d_loc.BLUE:
-            return 4, 4
+            return 4, 3
         
 
     def get_next_state(self,taxi_row:int, taxi_col:int, passenger_location:int, destination_location:int, action:int) -> tuple:
@@ -359,7 +359,7 @@ class QLearningAgent:
             taxi_position_next = max(taxi_row - 1, 0), taxi_col
             passenger_location_next = passenger_location
         elif action == a_sel.MOVE_EAST:
-            taxi_position_next = taxi_row, min(taxi_col + 1, 4)
+            taxi_position_next = taxi_row, min(taxi_col + 1, 3)
             passenger_location_next = passenger_location
         elif action == a_sel.MOVE_WEST:
             taxi_position_next = taxi_row, max(taxi_col - 1, 0)
@@ -424,7 +424,7 @@ episode_over = False
 total_reward = 0
 episode_reward_random = []
 observation,info = env_rl_agent.reset()
-for episodes in range(1):
+for episodes in range(10):
     observation,info = env_rl_agent.reset()
     while not episode_over:
         #Choose an action: 0 - move south, 1 - move north, 2 - move east, 3 - move west, 4 - pickup, 5 - dropoff
@@ -433,9 +433,9 @@ for episodes in range(1):
         action = agent.get_action(taxi_row, taxi_col, passenger_location, destination_location, info)  # Use the Q-learning agent to select an action
         # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
         observation, reward, terminated, truncated, info = env_rl_agent.step(action)
-        print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
-        print(f"Taxi Position: ({taxi_row}, {taxi_col})")
-        print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
+        # print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
+        # print(f"Taxi Position: ({taxi_row}, {taxi_col})")
+        # print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
         if truncated:
             print("Episode truncated due to time limit.")
         if terminated:
