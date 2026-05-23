@@ -32,7 +32,7 @@ The Taxi is modelled as a Markov Decision Process such that the
 '''
 # print ("AGENT NOT TRAINED YET! - Random Action Selection")
 env_random = gym.make("Taxi-v3", render_mode="human")
-time.sleep(10)
+
 
 # Start a new episode
 observation,info = env_random.reset()
@@ -44,35 +44,39 @@ print(f"Start Observation, info : {observation}," f" {info}")
 
 #Run a full episode. The action selection is random
 episode_over = False
-total_reward = 0
+total_reward_random = 0
 episode_reward_random = []
-
-# while not episode_over:
-#     #Choose an action: 0 - push cart left, 1 - push cart right
-#     #Action Selection Stage
-#     action = env_random.action_space.sample() # Random action. This is not an MDP model 
-#     # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
-#     observation, reward, terminated, truncated, info = env_random.step(action)
-    
-#     # Decode observation to extract state details
-#     taxi_row, taxi_col, passenger_location, destination_location = env_random.unwrapped.decode(observation)
-#     print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
-#     print(f"Taxi Position: ({taxi_row}, {taxi_col})")
-#     print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
-#     if truncated:
-#         print("Episode truncated due to time limit.")
-#     if terminated:
-#         print("Episode terminated successfully.")
-#     #reward +1 for each step the pole stays upright
-#     #Terminated / At Terminal Step : True if pole falls too far
-#     #Truncated : True if the time limit is hit
-#     total_reward += reward
-#     episode_over = terminated or truncated
-#     #Introduce a small delay to make the rendering visible (optional)
-#     time.sleep(0.1)
-#     episode_reward_random.append(reward)
-# print(f"Episode finished! Total reward: {total_reward}")
-# print(f"Rewards per step: {episode_reward_random}")
+episode_count = 2
+for episodes in range(episode_count):
+    while not episode_over:
+        #Choose an action: 0 - push cart left, 1 - push cart right
+        #Action Selection Stage
+        action = env_random.action_space.sample() # Random action. This is not an MDP model 
+        # Outcome of the action. New State, Reward, At Terminal Step, Truncated, additional information
+        observation, reward, terminated, truncated, info = env_random.step(action)
+        
+        # Decode observation to extract state details
+        taxi_row, taxi_col, passenger_location, destination_location = env_random.unwrapped.decode(observation)
+        # print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
+        # print(f"Taxi Position: ({taxi_row}, {taxi_col})")
+        # print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
+        if truncated:
+            print("Episode truncated due to time limit.")
+        if terminated:
+            print("Episode terminated successfully.")
+        #reward +1 for each step the pole stays upright
+        #Terminated / At Terminal Step : True if pole falls too far
+        #Truncated : True if the time limit is hit
+        total_reward_random += reward
+        episode_over = terminated or truncated
+        #Introduce a small delay to make the rendering visible (optional)
+        time.sleep(0.1)
+    episode_reward_random.append(total_reward_random)
+    print(f"Episode finished! Total reward: {total_reward_random}")
+    print(f"Rewards per step: {episode_reward_random}")
+    print("Total reward for episode {}: {}".format(episodes+1, total_reward_random))
+    total_reward_random = 0
+    episode_over = False
 env_random.close()
 
 
@@ -128,7 +132,7 @@ a_sel = ACTION_SELECTION(0, 1, 2, 3, 4, 5)
 # episode_over = False
 # total_reward = 0
 # episode_reward_heuristic = []
-
+#for episodes in range(episode_count):
 # while not episode_over:
 #     #Choose an action: 0 - push cart left, 1 - push cart right
 #     #Action Selection Stage
@@ -421,10 +425,11 @@ env_rl_agent = gym.make("Taxi-v3", render_mode="human")
 agent = QLearningAgent(env_rl_agent, learning_rate, starting_epsilon, epsilon_decay=0.99, final_epsilon=0.1)
 
 episode_over = False
-total_reward = 0
-episode_reward_random = []
+total_reward_ql_agent = 0
+episode_reward_rl_agent = []
 observation,info = env_rl_agent.reset()
-for episodes in range(10):
+counter = 0
+for episodes in range(episode_count):
     observation,info = env_rl_agent.reset()
     while not episode_over:
         #Choose an action: 0 - move south, 1 - move north, 2 - move east, 3 - move west, 4 - pickup, 5 - dropoff
@@ -436,6 +441,7 @@ for episodes in range(10):
         # print(f"Passenger Location: {passenger_location}, Destination Location: {destination_location}")
         # print(f"Taxi Position: ({taxi_row}, {taxi_col})")
         # print(f"Observation decoded: taxi_row={taxi_row}, taxi_col={taxi_col}, passenger_loc={passenger_location}, dest_loc={destination_location}")
+        total_reward_ql_agent += reward
         if truncated:
             print("Episode truncated due to time limit.")
         if terminated:
@@ -445,12 +451,33 @@ for episodes in range(10):
         #reward +1 for each step the pole stays upright
         #Terminated / At Terminal Step : True if pole falls too far
         #Truncated : True if the time limit is hit
-        total_reward += reward
+        
         
         #Introduce a small delay to make the rendering visible (optional)
         time.sleep(0.1)
-        episode_reward_random.append(reward)
+    episode_reward_rl_agent.append(total_reward_ql_agent)
+    
+    print("Total reward for episode {}: {}".format(episodes+1, total_reward_ql_agent))
+    total_reward_ql_agent = 0
     episode_over = False
-print(f"Episode finished! Total reward: {total_reward}")
-print(f"Rewards per step: {episode_reward_random}")
+
+#plot total rewards per episode for randome agent and q learning agent
+import matplotlib.pyplot as plt
+def plot_rewards(episode_reward_random, episode_reward_rl_agent):
+    episodes_r = np.arange(1, episode_count + 1)
+    episodes_q = np.arange(1, episode_count + 1)
+
+    plt.figure(figsize=(10,5))
+    plt.plot(episodes_r, total_reward_random, '-o', label='Random Policy')
+    plt.plot(episodes_q, total_reward_ql_agent, '-o', label='Q-Learning Agent')
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward')
+    plt.title('Episode Rewards: Random vs Q-Learning Agent')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+plot_rewards(episode_reward_random, episode_reward_rl_agent)
+# print(f"Episode finished! Total reward: {total_reward}")
+# print(f"Rewards per step: {episode_reward_random}")
 env_rl_agent.close()
