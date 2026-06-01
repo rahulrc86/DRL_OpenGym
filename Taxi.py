@@ -46,7 +46,7 @@ print(f"Start Observation, info : {observation}," f" {info}")
 episode_over = False
 total_reward_random = 0
 episode_reward_random = []
-episode_count = 2
+episode_count = 1
 for episodes in range(episode_count):
     while not episode_over:
         #Choose an action: 0 - push cart left, 1 - push cart right
@@ -462,22 +462,22 @@ for episodes in range(episode_count):
     episode_over = False
 
 #plot total rewards per episode for randome agent and q learning agent
-import matplotlib.pyplot as plt
-def plot_rewards(episode_reward_random, episode_reward_rl_agent):
-    episodes_r = np.arange(1, episode_count + 1)
-    episodes_q = np.arange(1, episode_count + 1)
+# import matplotlib.pyplot as plt
+# def plot_rewards(episode_reward_random, episode_reward_rl_agent):
+#     episodes_r = np.arange(1, episode_count + 1)
+#     episodes_q = np.arange(1, episode_count + 1)
 
-    plt.figure(figsize=(10,5))
-    plt.plot(episodes_r, total_reward_random, '-o', label='Random Policy')
-    plt.plot(episodes_q, total_reward_ql_agent, '-o', label='Q-Learning Agent')
-    plt.xlabel('Episode')
-    plt.ylabel('Total Reward')
-    plt.title('Episode Rewards: Random vs Q-Learning Agent')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-plot_rewards(episode_reward_random, episode_reward_rl_agent)
-# print(f"Episode finished! Total reward: {total_reward}")
-# print(f"Rewards per step: {episode_reward_random}")
-env_rl_agent.close()
+#     plt.figure(figsize=(10,5))
+#     plt.plot(episodes_r, total_reward_random, '-o', label='Random Policy')
+#     plt.plot(episodes_q, total_reward_ql_agent, '-o', label='Q-Learning Agent')
+#     plt.xlabel('Episode')
+#     plt.ylabel('Total Reward')
+#     plt.title('Episode Rewards: Random vs Q-Learning Agent')
+#     plt.legend()
+#     plt.grid(True)
+#     plt.tight_layout()
+#     plt.show()
+# plot_rewards(episode_reward_random, episode_reward_rl_agent)
+# # print(f"Episode finished! Total reward: {total_reward}")
+# # print(f"Rewards per step: {episode_reward_random}")
+# env_rl_agent.close()
