@@ -1099,9 +1099,9 @@ class RescueDroneValueIteration:
                         )
 
                         self.V[state] = 0.0
-        for state in self.states:
+        # for state in self.states:
 
-            print("state is ", state)
+        #     print("state is ", state)
 
     # ========================================================
     # TERMINAL STATE CHECK
@@ -1364,11 +1364,7 @@ class RescueDroneValueIteration:
     # TRANSITION MODEL
     # ========================================================
 
-    def get_transition_model(
-        self,
-        state,
-        action
-    ):
+    def get_transition_model(self, state,  action):
         """
         Returns:
 
@@ -1381,10 +1377,7 @@ class RescueDroneValueIteration:
         ]
         """
 
-        position = (
-            state[0],
-            state[1]
-        )
+        position = ( state[0], state[1])
 
         transitions = []
 
@@ -1392,53 +1385,31 @@ class RescueDroneValueIteration:
         # WIND ZONE
         # ----------------------------------
 
-        if (
-            position
-            in
-            self.env.wind_zones
+        if (position in  self.env.wind_zones
             and
-            action != a_sel.HOVER
-        ):
+            action != a_sel.HOVER):
 
-            all_actions = [
-
-                a_sel.MOVE_UP,
-
-                a_sel.MOVE_DOWN,
-
-                a_sel.MOVE_LEFT,
-
-                a_sel.MOVE_RIGHT
-            ]
+            all_actions = [a_sel.MOVE_UP,\
+                           a_sel.MOVE_DOWN,\
+                           a_sel.MOVE_LEFT,\
+                           a_sel.MOVE_RIGHT]
 
             for candidate_action in all_actions:
 
                 if candidate_action == action:
-
                     probability = 0.70
-
                 else:
-
                     probability = 0.10
 
-                next_state = (
-                    self.get_next_state(
+                next_state = (self.get_next_state(
                         state,
-                        candidate_action
-                    )
-                )
+                        candidate_action ) )
 
-                reward = (
-                    self.get_transition_reward(
+                reward = (self.get_transition_reward(
                         state,
-                        next_state
-                    )
-                )
+                        next_state )  )
 
-                transitions.append(
-
-                    (
-                        probability,
+                transitions.append((    probability,
                         next_state,
                         reward
                     )
@@ -1471,7 +1442,7 @@ class RescueDroneValueIteration:
 
         return transitions
     
-        # ========================================================
+    # ========================================================
     # COMPUTE ACTION VALUE
     # ========================================================
 
